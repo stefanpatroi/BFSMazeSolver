@@ -1,6 +1,10 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 
+class MazeVisitor(ABC):
+    @abstractmethod
+    def visit(self, maze):
+        pass
 class Turn(Enum):
     RIGHT = 1
     LEFT = 2
@@ -61,6 +65,17 @@ class Position:
         elif direction == Direction.RIGHT:
             return self.add(Position(1, 0))
         raise ValueError(f"Unexpected direction: {direction}")
+    
+    def __str__(self):
+        return f"Position({self.x},{self.y})"
+
+    def __eq__(self, other):
+        if isinstance(other, Position):
+            return self.x == other.x and self.y == other.y
+        return False
+
+    def __hash__(self):
+        return hash((self.x, self.y))
 
 class Maze:
     def __init__(self, file_path):
@@ -114,6 +129,41 @@ class Maze:
 
     def get_size_y(self):
         return len(self.maze)
+    def validate_path(self, path):
+        r2l = (self.validate_path_dir(path, self.get_start(), Direction.RIGHT, self.get_end()))
+               
+        l2r = (self.validate_path_dir(path, self.get_end(), Direction.LEFT, self.get_start()))
+        return (r2l or l2r)
+
+    def validate_path_dir(self, path, start_pos, start_dir, end_pos):
+        pos = start_pos
+        dir = start_dir
+    
+        for c in path.get_path_steps():
+            if c == 'F':
+                pos = pos.move(dir)
+                if self.is_wall(pos) or not (0 <= pos.x < self.get_size_x() and 0 <= pos.y < self.get_size_y()):
+                    return False
+            elif c == 'R':
+                dir = dir.turn_right()
+            elif c == 'L':
+                dir = dir.turn_left()
+        
+            print(f"Current Position: {pos}")
+            print(f"Current Direction: {dir}")
+        return pos == end_pos
+    
+    def print_maze(self):
+        for row in self.maze:
+            for cell in row:
+                if cell:
+                    print('#', end='') 
+                else:
+                    print(' ', end='')  
+            print() 
+    
+    def accept(self, visitor):
+        visitor.visit(self)
 
 class Path:
     def __init__(self, path_string=None):
@@ -168,6 +218,9 @@ class Path:
         return list(self.path)
 
 class MazeSolver(ABC):
+    @abstractmethod
+    def solve(self, maze: Maze) -> Path:
+        pass 
 
 class RightHandSolver(MazeSolver):
 
